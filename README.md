@@ -2,8 +2,8 @@
 > nest.js chat server with socket.io
 
 ## Component
-- [Nest](https://github.com/nestjs/nest) Framework 8
-- [TypeScript](https://www.typescriptlang.org/) 4.x
+- [Nest](https://github.com/nestjs/nest) Framework 10
+- [TypeScript](https://www.typescriptlang.org/) 5.x
 - [Socket.IO](https://socket.io/docs/v4/) 4.x
 - MySql 
 - Redis
