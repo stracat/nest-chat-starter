@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { profile } from 'console';
 import * as mysql from 'mysql2/promise';
+import {RowDataPacket} from 'mysql2';
 
 const enum DatabaseType {
   GLOBAL = "global",
@@ -36,9 +37,10 @@ export class MysqlService {
 
   private async query(type: DatabaseType, sql: string) {
     const conn = await this.getClient(type);
-    let rows: mysql.RowDataPacket[] | mysql.RowDataPacket[][] | mysql.OkPacket | mysql.OkPacket[] | mysql.ResultSetHeader;
+    let result: RowDataPacket[];
     try {
-      rows = await conn.query(sql).then(rows => rows[0]);
+      const [rows] = await conn.query<RowDataPacket[]>(sql);
+      result = rows;
     }
     catch(err) {
       throw err;
@@ -46,7 +48,7 @@ export class MysqlService {
     finally {
       conn.release();
     }
-    return rows;
+    return result;
   }
 
   public async getUserProfile(userSeq: number) {
