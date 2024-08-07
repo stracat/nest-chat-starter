@@ -1,0 +1,461 @@
+<html>
+  <head>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" type="text/css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>    
+    <script src="https://cdn.socket.io/3.1.3/socket.io.min.js" integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh" crossorigin="anonymous"></script>
+    <script>      
+      const socket = io('http://localhost:5000');
+      socket.on('connect', function() {
+        onConnected();        
+      });
+      socket.on('events', function(data) {
+        console.log(data);
+      });
+      socket.on('exception', function(data) {
+        console.log('event', data);
+      });
+      socket.on('disconnect', function() {
+        onDisconnected();
+      });
+      socket.on('message', function(data) {
+        console.log('message', data);
+        switch(data.protocolId) {
+          case 30101: csChatConnect(data); break;
+          case 30201: csChatSend(data); break;
+          case 30209: csChatChannel(data); break;
+          case 30401: pcChatJoin(data); break;
+          case 30404: pcChatSend(data); break;
+        }
+      });
+    </script>    
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="messaging">
+        <div class="inbox_msg">
+          <div class="inbox_channel">
+            <div class="headind_srch">
+              <div class="recent_heading">
+                <p id="connectTitle">-</p>
+              </div>
+            </div>
+            <div class="inbox_chat">
+              <div class="chat_list active_chat" id="tablink_world" onclick="selectedTabNav('tablink_world')">
+                <div class="chat_people">
+                  <div class="chat_img"> <img src="/img/world_earth_icon.png"> </div>
+                  <div class="chat_ib">
+                    <h5>Channel <span class="chat_date" id="worldChannelName">-</span></h5>
+                  </div>
+                </div>
+              </div>
+              <div class="chat_list" id="tablink_whisper" onclick="selectedTabNav('tablink_whisper')">
+                <div class="chat_people">
+                  <div class="chat_img"> <img src="/img/chat_comment_icon.png"> </div>
+                  <div class="chat_ib">
+                    <h5>Whisper <span class="chat_date" id="whisperChannelName">-</span></h5>
+                  </div>
+                </div>
+              </div>
+              <div class="chat_list" id="tablink_party" onclick="selectedTabNav('tablink_party')">
+                <div class="chat_people">
+                  <div class="chat_img"> <img src="/img/wechat_icon.png"> </div>
+                  <div class="chat_ib">
+                    <h5>Party <span class="chat_date" id="partyChannelName">-</span></h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mesgs">
+            <div class="tab-content" id="nav-tabContent">
+              <div class="tab-pane fade show active" id="nav_world" role="tabpanel" aria-labelledby="nav_world_tab">
+                <div class="msg_history" id="chatbox-world"></div>
+              </div>
+              <div class="tab-pane fade" id="nav_whisper" role="tabpanel" aria-labelledby="nav_whisper_tab">
+                <div class="msg_history" id="chatbox-whisper"></div>
+              </div>
+              <div class="tab-pane fade" id="nav_party" role="tabpanel" aria-labelledby="nav_party_tab">
+                <div class="msg_history" id="chatbox-party"></div>
+              </div>
+            </div>            
+            <div class="type_msg">
+              <div class="input_msg_write">
+                <input type="text" class="write_msg" id="defaultEnterInput" placeholder="Type a message" />
+                <button class="msg_send_btn" id="defaultEnterButton" type="button" onclick="sendChat()">
+                  <i class="fa fa-paper-plane-o" aria-hidden="true"></i>
+                </button>
+                <script>
+                  const input = document.getElementById("defaultEnterInput");
+                  input.addEventListener("keyup", function(event) {
+                    if (event.keyCode === 13) {
+                      event.preventDefault();
+                      document.getElementById("defaultEnterButton").click();
+                    }
+                  });
+                </script>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="pos-f-t">          
+          <nav class="navbar navbar-dark bg-dark">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggleExternalContent" aria-controls="navbarToggleExternalContent" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="dropdown right">
+              <button class="btn btn-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Action
+              </button>
+              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                <a class="dropdown-item" id="menuConnect">Connect</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" id="menuChangeChannel">Change Channel</a>
+              </div>
+              <script>
+                $('#menuConnect').on('click', function(){
+                  let nick = prompt('Enter Nick Name', '');
+                  if(nick) {
+                    sessionStorage.nick = nick;
+                    socket.emit('30101', {
+                      nick
+                    });
+                  }
+                });
+                $('#menuChangeChannel').on('click', function(){
+                  let num = prompt('Enter Channel Number (0 - 999)', '');
+                  socket.emit('30209', {
+                    channel: num
+                  });
+                });
+              </script>
+            </div>
+          </nav>
+          <div class="collapse" id="navbarToggleExternalContent">
+            <div class="bg-dark p-3 small">
+              <div class="alert alert-dark" role="alert">
+                Connect : 유저번호로 소켓서버 접속 (계정 로그인)
+              </div>
+              <div class="alert alert-dark" role="alert">
+                Change Channel : 채널 변경
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>  
+</html>
+
+<script>
+  const navList = [ 
+    { tab: 'tablink_world', nav: 'nav_world' },
+    { tab: 'tablink_whisper', nav: 'nav_whisper' },
+    { tab: 'tablink_party', nav: 'nav_party' },
+  ];
+  function selectedTabNav(id) {
+    for(let i in navList) {
+      const item = navList[i];
+      if(item.tab == id) {
+        $(`#${item.tab}`).removeClass('active_chat').addClass('active_chat');
+        $(`#${item.nav}`).removeClass('show active').addClass('show active');
+      }
+      else {
+        $(`#${item.tab}`).removeClass('active_chat');
+        $(`#${item.nav}`).removeClass('show active');
+      }
+    }
+    sessionStorage.currentTab = id;
+  }
+
+  function sendChat(message) {
+    if (!sessionStorage.nick) {
+      return alert('not connected');
+    }
+
+    const ChatType = { "WORLD": 0, "WHISPER":2, "PARTY":3 };
+    let msg = $('.write_msg').val();
+    $('.write_msg').val('');
+
+    let chatType = ChatType.WORLD;
+    let chatTarget = 0;
+    if(sessionStorage.currentTab == 'tablink_whisper') {
+      chatType = ChatType.WHISPER;
+      let indexSlice = msg.indexOf(' ');
+      if(indexSlice == -1) 
+        return alert('whisper chat format : [UserSeq] [Message]');
+      chatTarget = msg.slice(0, indexSlice);
+      msg = msg.slice(indexSlice + 1);
+    }
+    else if(sessionStorage.currentTab == 'tablink_party') {
+      chatType = ChatType.PARTY;
+    }
+
+    if(msg.length <= 0) {
+      return alert('empty message');
+    }
+    
+    if(chatType == ChatType.WORLD) {
+      socket.emit('30201', {
+        channel: sessionStorage.worldChannelId,
+        eChatMsgType: '0',
+        message: msg,
+      });
+      const item = renderOutgoningMessage(msg);
+      $('#chatbox-world').append(item);
+      $('#chatbox-world').scrollTop($('#chatbox-world').height());
+    }
+    else if(chatType == ChatType.WHISPER) {  
+      socket.emit('30201', {
+        channel: parseInt('wr' + chatTarget, 36),
+        eChatMsgType: '2',
+        message: msg
+      });
+      const item = renderOutgoningMessage(`=>${chatTarget} ` + msg);    
+      $('#chatbox-whisper').append(item);
+      $('#chatbox-whisper').scrollTop($('#chatbox-whisper').height());
+    }
+    else if(chatType == ChatType.PARTY) {
+      socket.emit('30201', {
+        channel: sessionStorage.partyChannelId,
+        eChatMsgType: '3',
+        message: msg
+      });
+      const item = renderOutgoningMessage(msg);    
+      $('#chatbox-party').append(item);
+      $('#chatbox-party').scrollTop($('#chatbox-party').height());
+    }
+  }
+
+  function onConnected() {
+    console.log('Connected');
+    sessionStorage.nick = undefined;
+    sessionStorage.worldChannelId = undefined;
+    sessionStorage.whisper = undefined;
+    $('#connectTitle').text('-');
+    selectedTabNav('tablink_world');
+  }
+
+  function onDisconnected() {
+    console.log('Disconnected');
+    sessionStorage.nick = undefined;
+    sessionStorage.worldChannelId = undefined;
+    sessionStorage.whisper = undefined;
+    $('#connectTitle').text('-');
+  }
+
+  function csChatConnect(data) {
+  }  
+  function csChatSend(data) {
+  }
+  function csChatChannel(data) {
+    sessionStorage.worldChannelId = data.channel;
+    $('#worldChannelName').text(`${sessionStorage.worldChannelId}`);
+  }
+  function pcChatJoin(data) { 
+    console.log(data);
+    sessionStorage.worldChannelId = data.channel;
+    sessionStorage.id = data.id;
+    sessionStorage.nick = data.nick;
+    sessionStorage.whisper = parseInt('wr' + sessionStorage.userSeq, 36)
+    $('#connectTitle').text(`${sessionStorage.nick} (${sessionStorage.id})`);
+    $('#worldChannelName').text(`${sessionStorage.worldChannelId}`);
+    $('#whisperChannelName').text(`${sessionStorage.whisper}`);
+  }
+  function pcChatSend(data) { 
+    const item = renderIncomingMessage(data);
+    if(data.eChatMsgType == 0) {
+      $('#chatbox-world').append(item);
+      $('#chatbox-world').scrollTop($('#chatbox-world').height());
+    }
+    else if(data.eChatMsgType == 2) {
+      if(sessionStorage.userSeq != data.profile.userSeq) {
+        $('#chatbox-whisper').append(item);
+        $('#chatbox-whisper').scrollTop($('#chatbox-whisper').height());
+      }
+    }
+    else if(data.eChatMsgType == 3) {
+      $('#chatbox-party').append(item);
+      $('#chatbox-party').scrollTop($('#chatbox-party').height());
+    }
+  }
+  
+  function renderOutgoningMessage(data) {
+    const msg = data;
+    const date = new Date();
+    return `
+    <div class="outgoing_msg">
+      <div class="sent_msg">
+        <p>${msg}</p>
+        <span class="time_date">${date.toLocaleTimeString()}</span>
+      </div>
+    </div>`;
+  }
+
+  function renderIncomingMessage(data) {
+    let name = data.profile.nick;
+    if(data.eChatMsgType == 2) {
+      name += `:${data.profile.userSeq}`;
+    }
+    const msg = data.message;
+    const date = new Date(data.time);
+    return `
+    <div class="incoming_msg">
+      <div class="received_msg">
+        <div class="received_withd_msg">
+          <p><b>[${name}]</b> ${msg}</p>
+          <span class="time_date">${date.toLocaleTimeString()}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+</script>
+
+<style>
+.container {
+  max-width:1100px; 
+  margin:auto;
+  margin-top: 50px;
+}
+img { 
+  max-width:100%;
+}
+.inbox_channel {
+  background: #f8f8f8 none repeat scroll 0 0;
+  float: left;
+  overflow: hidden;
+  width: 30%; border-right:1px solid #c4c4c4;
+}
+.inbox_msg {
+  border: 1px solid #c4c4c4;
+  clear: both;
+  overflow: hidden;
+}
+.top_spac{ margin: 20px 0 0;}
+.recent_heading {float: left; width:50%;}
+.srch_bar {
+  display: inline-block;
+  text-align: right;
+  width: 50%;
+}
+.headind_srch{ padding:10px 29px 10px 20px; overflow:hidden; border-bottom:1px solid #c4c4c4;}
+
+.recent_heading h4 {
+  color: #05728f;
+  font-size: 21px;
+  margin: auto;
+}
+.srch_bar input{ border:1px solid #cdcdcd; border-width:0 0 1px 0; width:80%; padding:2px 0 4px 6px; background:none;}
+.srch_bar .input-group-addon button {
+  background: rgba(0, 0, 0, 0) none repeat scroll 0 0;
+  border: medium none;
+  padding: 0;
+  color: #707070;
+  font-size: 18px;
+}
+.srch_bar .input-group-addon { margin: 0 0 0 -27px;}
+
+.chat_ib h5{ font-size:15px; color:#464646; margin:0 0 8px 0;}
+.chat_ib h5 span{ font-size:13px; float:right;}
+.chat_ib p{ font-size:14px; color:#989898; margin:auto}
+.chat_img {
+  float: left;
+  width: 11%;
+}
+.chat_ib {
+  float: left;
+  padding: 0 0 0 15px;
+  width: 88%;
+}
+
+.chat_people{ overflow:hidden; clear:both;}
+.chat_list {
+  border-bottom: 1px solid #c4c4c4;
+  margin: 0;
+  padding: 18px 16px 10px;
+}
+.inbox_chat { height: 550px; }
+
+.active_chat{ background:#ebebeb;}
+
+.incoming_msg_img {
+  display: inline-block;
+  width: 6%;
+}
+.received_msg {
+  display: inline-block;
+  padding: 0 0 0 10px;
+  vertical-align: top;
+  width: 92%;
+ }
+ .received_withd_msg p {
+  background: #DCE2F0 none repeat scroll 0 0;
+  border-radius: 3px;
+  color: #646464;
+  font-size: 14px;
+  margin: 0;
+  padding: 5px 10px 5px 12px;
+  width: 100%;
+}
+.time_date {
+  color: #747474;
+  display: block;
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+.received_withd_msg { width: 57%;}
+.mesgs {
+  float: left;
+  padding: 30px 15px 0 25px;
+  width: 70%;
+}
+
+.sent_msg p {
+  background: #50586C none repeat scroll 0 0;
+  border-radius: 3px;
+  font-size: 14px;
+  margin: 0; color:#fff;
+  padding: 5px 10px 5px 12px;
+  width:100%;
+}
+.outgoing_msg { 
+  overflow:hidden; 
+  margin: 0px 0 0px;
+}
+.sent_msg {
+  float: right;
+  width: 46%;
+}
+.input_msg_write input {
+  background: rgba(0, 0, 0, 0) none repeat scroll 0 0;
+  border: medium none;
+  color: #4c4c4c;
+  font-size: 15px;
+  min-height: 48px;
+  width: 100%;
+}
+
+.type_msg {border-top: 1px solid #c4c4c4;position: relative;}
+.msg_send_btn {
+  background: #50586C none repeat scroll 0 0;
+  border: medium none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  font-size: 17px;
+  height: 33px;
+  position: absolute;
+  right: 0;
+  top: 11px;
+  width: 33px;
+}
+.messaging { padding: 0 0 0px 0;}
+.msg_history {
+  height: 516px;
+  overflow-y: auto;
+}
+</style>
